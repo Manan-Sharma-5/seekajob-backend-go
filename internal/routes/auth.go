@@ -5,9 +5,10 @@ import (
 	"github.com/manan-sharma-5/seekajob-backend/internal/handler"
 )
 
-func RegisterAuthRoutes(r *gin.Engine) {
-    auth := r.Group("/auth")
+func RegisterAuthRoutes(rg *gin.RouterGroup) {
+    auth := rg.Group("/auth")
     {
         auth.POST("/signup", handler.Signup)
+        auth.POST("/login", handler.Login)
     }
 }

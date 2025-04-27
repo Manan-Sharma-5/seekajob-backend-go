@@ -15,7 +15,7 @@ func Signup(c *gin.Context) {
         return
     }
 
-    userID, err := service.SignupUser(req)
+    user, err := service.SignupUser(req)
     if err != nil {
         if err == service.ErrEmailAlreadyInUse {
             c.JSON(http.StatusConflict, gin.H{"error": "Email already in use"})
@@ -25,9 +25,16 @@ func Signup(c *gin.Context) {
         return
     }
 
-    c.SetCookie("user_id", userID, 3600, "/", "", false, true)
+    c.SetCookie("user_id", user.ID, 3600, "/", "", false, true)
     c.SetCookie("is_candidate", "true", 3600, "/", "", false, true)
-    c.JSON(http.StatusOK, gin.H{"message": "Signup successful"})
+    c.JSON(http.StatusOK, gin.H{"message": "Signup successful",
+        "user": gin.H{
+            "id":       user.ID,
+            "name":     user.Name,
+            "email":    user.Email,
+            "is_candidate": user.IsCandidate,
+        },
+})
 }
 
 func Login(c *gin.Context) {
@@ -46,6 +53,13 @@ func Login(c *gin.Context) {
         }
         return
     }
-    c.SetCookie("user_id", userID, 3600, "/", "", false, true)
-    c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
+    c.SetCookie("user_id", userID.ID, 3600, "/", "", false, true)
+    c.JSON(http.StatusOK, gin.H{"message": "Login successful", 
+        "user": gin.H{
+            "id":       userID.ID,
+            "name":     userID.Name,
+            "email":    userID.Email,
+            "is_candidate": userID.IsCandidate,
+        },
+})
 }

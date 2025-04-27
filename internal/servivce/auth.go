@@ -5,50 +5,49 @@ import (
 
 	"github.com/manan-sharma-5/seekajob-backend/internal/model"
 	"github.com/manan-sharma-5/seekajob-backend/internal/repository"
-	"golang.org/x/crypto/bcrypt"
 )
 
-func SignupUser(req model.SignupRequest) (string, error) {
+func SignupUser(req model.SignupRequest) (*model.User, error) {
     taken, err := repository.IsEmailTaken(req.Email)
     if err != nil {
-        return "", err
+        return nil, err
     }
     if taken {
-        return "", ErrEmailAlreadyInUse
+        return nil, ErrEmailAlreadyInUse
     }
 
-    hashed, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
     if err != nil {
-        return "", err
+        return nil, err
     }
 
     user := &model.User{
         Name:     req.Name,
         Email:    req.Email,
-        Password: string(hashed),
+        Password: req.Password,
+        IsCandidate: req.IsCandidate,
     }
 
     userCreated, err := repository.CreateUser(user)
 
     if err != nil {
-        return "", err
+        return nil, err
     }
     if userCreated == nil {
-        return "", fmt.Errorf("user not created")
+        return nil, fmt.Errorf("user not created")
     }
 
-    return userCreated.ID, nil
+    return userCreated, nil
 }
 
-func LoginUser(req model.LoginRequest) (string, error) {
+func LoginUser(req model.LoginRequest) (*model.User, error) {
     userVerified, err := repository.VerifyUser(req.Email, req.Password, req.IsCandidate)
     if err != nil {
-        return "", err
+        return nil, err
     }
     if userVerified == nil {
-        return "", ErrInvalidCredentials
+        return nil, ErrInvalidCredentials
     }
-    return userVerified.ID, nil
+    return userVerified, nil
 }
 
 

@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 type Job struct {
     ID                  string       `bson:"_id,omitempty" json:"id"`
@@ -32,18 +36,21 @@ type Company struct {
 }
 
 type JobApplicant struct {
-    ID        string     `bson:"_id,omitempty" json:"id"`
-    JobID     string     `bson:"jobID" json:"jobID"`
-    UserID    string     `bson:"userID" json:"userID"`
-    Job       *Job       `bson:"job,omitempty" json:"job,omitempty"`
-    User      *User `bson:"user,omitempty" json:"user,omitempty"`
-    Name      string     `bson:"name" json:"name"`
-    Email     string     `bson:"email" json:"email"`
-    Resume    string     `bson:"resume" json:"resume"`
-    Status    string     `bson:"status" json:"status"`
-    CreatedAt time.Time  `bson:"createdAt" json:"createdAt"`
-    UpdatedAt time.Time  `bson:"updatedAt" json:"updatedAt"`
+    ID        primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+    JobID     primitive.ObjectID `bson:"jobID" json:"jobID"`
+    UserID    primitive.ObjectID `bson:"userID" json:"userID"`
+
+    Job       *Job               `bson:"job,omitempty" json:"job,omitempty"`
+    User      *User         `bson:"user,omitempty" json:"user,omitempty"`
+
+    Name      string             `bson:"name" json:"name"`
+    Email     string             `bson:"email" json:"email"`
+    Resume    string             `bson:"resume" json:"resume"`
+    Status    string             `bson:"status" json:"status"`
+    CreatedAt time.Time          `bson:"createdAt" json:"createdAt"`
+    UpdatedAt time.Time          `bson:"updatedAt" json:"updatedAt"`
 }
+
 
 type CreateJobRequest struct {
 	Title               string   `json:"title" binding:"required"`
@@ -54,10 +61,10 @@ type CreateJobRequest struct {
 	Salary              float64  `json:"salary" binding:"required"`
 	Category            string   `json:"category" binding:"required"`
 	Tags                []string `json:"tags" binding:"required"`
-	CompanyID           string   `json:"companyID" binding:"required"`
+	Company             string   `json:"company" binding:"required"`
 }
 
 type ApplyJobRequest struct {
 	JobID     string `json:"job_id" binding:"required"`
-	UserID    string `json:"user_id" binding:"required"`
+	UserID    string `json:"user_id"`
 }

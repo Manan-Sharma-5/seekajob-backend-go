@@ -14,7 +14,7 @@ var (
     clientInstance     *mongo.Client
     clientInstanceErr  error
     mongoOnce          sync.Once
-    mongoURI           = "mongodb://localhost:27017" // Replace with env/config
+    mongoURI           = "mongodb+srv://mashmanan:dUQpsMPcevispMMx@cluster0.bivmemp.mongodb.net/seekAjob" // Replace with env/config
     connectionTimeout  = 10 * time.Second
 )
 

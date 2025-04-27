@@ -7,6 +7,8 @@ import (
 
 	db "github.com/manan-sharma-5/seekajob-backend/internal/dbconfig"
 	"github.com/manan-sharma-5/seekajob-backend/internal/model"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -17,15 +19,28 @@ func ApplyJob(jobID string, userID string) error {
 	}
 	coll := client.Collection("job_applications")
 	collUser := client.Collection("users")
-	user := collUser.FindOne(context.Background(), model.User{ID: userID})
-	if user.Err() != nil {
-		return user.Err()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	userPrimitive, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		return fmt.Errorf("invalid user ID format")
 	}
+	jobPrimitive, err := primitive.ObjectIDFromHex(jobID)
+	if err != nil {
+		return fmt.Errorf("invalid job ID format")
+	}
+	user := collUser.FindOne(ctx, bson.M{"_id": userPrimitive})
 	if user.Err() == mongo.ErrNoDocuments {
 		return fmt.Errorf("user not found")
 	}
+	if user.Err() != nil {
+		return user.Err()
+	}
 
-	existingApplication := coll.FindOne(context.Background(), model.JobApplicant{JobID: jobID, UserID: userID})
+	existingApplication := coll.FindOne(context.Background(), bson.M{
+		"job_id": jobPrimitive,
+		"user_id": userPrimitive,
+	})
 	if existingApplication.Err() == nil {
 		return fmt.Errorf("user has already applied for this job")
 	}
@@ -42,18 +57,23 @@ func ApplyJob(jobID string, userID string) error {
 		return fmt.Errorf("user is not a candidate")
 	}
 
+	jobIDObjectID, err := primitive.ObjectIDFromHex(jobID)
+	if err != nil {
+		return fmt.Errorf("invalid job ID format")
+	}
+	userIDObjectID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		return fmt.Errorf("invalid user ID format")
+	}
+
 	application := &model.JobApplicant{
-		JobID:    jobID,
-		UserID:   userID,
+		JobID:    jobIDObjectID,
+		UserID:   userIDObjectID,
 		Status:   "applied",
 		Resume: userDetails.Resume,
 		Name:  userDetails.Name,
 		Email: userDetails.Email,
 	}
-
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
 
 	_, err = coll.InsertOne(ctx, application)
 	if err != nil {
