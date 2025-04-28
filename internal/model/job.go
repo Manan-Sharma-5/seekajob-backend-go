@@ -68,3 +68,14 @@ type ApplyJobRequest struct {
 	JobID     string `json:"job_id" binding:"required"`
 	UserID    string `json:"user_id"`
 }
+
+type UserWithApplicationsAndJobs struct {
+    ID             string          `bson:"_id,omitempty" json:"id"`
+    Name           string          `bson:"name" json:"name"`
+    Email          string          `bson:"email" json:"email"`
+    IsCandidate    bool            `bson:"isCandidate" json:"isCandidate"`
+    CreatedAt      time.Time       `bson:"createdAt" json:"createdAt"`
+    UpdatedAt      time.Time       `bson:"updatedAt" json:"updatedAt"`
+    AppliedJobs    []Job     `bson:"appliedJobs" json:"appliedJobs"`
+    JobApplications []JobApplicant `bson:"jobApplications" json:"jobApplications"`
+}

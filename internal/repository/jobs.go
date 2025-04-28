@@ -10,6 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func CreateJob(jobRequest *model.CreateJobRequest, userID string) error {
@@ -159,27 +160,69 @@ func GetJobApplicantWithRelations(applicantID string) (*model.JobApplicant, erro
     return &results[0], nil
 }
 
-func GetJobByID(jobID string) (*model.Job, error) {
+func GetJobByID(jobID string, userID string) (*model.Job, bool, []model.Job, error) {
     client, err := db.GetMongoClient()
     if err != nil {
-        return nil, err
+        return nil, false, nil, err
     }
 
     coll := client.Collection("jobs")
+    applicantColl := client.Collection("job_applications")
     ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
     defer cancel()
 
     var job model.Job
     objobID, err := primitive.ObjectIDFromHex(jobID)
     if err != nil {
-        return nil, err
+        return nil, false, nil, err
     }
     err = coll.FindOne(ctx, bson.M{"_id": objobID}).Decode(&job)
     if err != nil {
-        return nil, err
+        return nil, false, nil, err
     }
 
-    return &job, nil
+    obuserID, err := primitive.ObjectIDFromHex(userID)
+    if err != nil {
+        return nil, false, nil, err
+    }
+
+    // Check if the user has applied for this job
+    jobApplicant := true
+    jobApplier := model.JobApplicant{}
+    err = applicantColl.FindOne(ctx, bson.M{"jobID": objobID, "userID": obuserID}).Decode(&jobApplier)
+    if err != nil {
+        if err == mongo.ErrNoDocuments {
+            // User has not applied for this job
+            jobApplicant = false
+        } else {
+            // Some other error occurred
+            return nil, false, nil, err
+        }
+    }
+
+    filter := bson.M{
+        "_id": bson.M{"$ne": objobID}, // Exclude current job
+        "$or": []bson.M{
+            {"companyID": job.CompanyID},
+            {"tags": bson.M{"$in": job.Tags}},
+        },
+    }
+
+    options := options.Find()
+    options.SetLimit(3)
+    options.SetSort(bson.M{"createdAt": -1})
+
+    cursor, err := coll.Find(ctx, filter, options)
+    if err != nil {
+        return &job, jobApplicant, nil, err
+    }
+
+    var recommendedJobs []model.Job
+    if err := cursor.All(ctx, &recommendedJobs); err != nil {
+        return &job, jobApplicant, nil, err
+    }
+
+    return &job, jobApplicant, recommendedJobs, nil
 }
 
 func GetApplicationsWithJobID(jobID string) ([]model.JobApplicant, error) {
@@ -233,6 +276,80 @@ func GetJobByRecruiterID(recruiterID string) ([]model.Job, error) {
     defer cursor.Close(ctx)
 
     log.Println("Cursor:", cursor)
+
+    var jobs []model.Job
+    if err := cursor.All(ctx, &jobs); err != nil {
+        return nil, err
+    }
+
+    return jobs, nil
+}
+
+func DeleteJob(jobID string) error {
+    dbClient, err := db.GetMongoClient()
+    if err != nil {
+        return err
+    }
+
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+
+    jobsCollection := dbClient.Collection("jobs")
+    jobApplicationsCollection := dbClient.Collection("job_applications")
+
+    oid, err := primitive.ObjectIDFromHex(jobID)
+    if err != nil {
+        return err
+    }
+
+    _, err = jobsCollection.DeleteOne(ctx, bson.M{"_id": oid})
+    if err != nil {
+        return err
+    }
+
+    _, err = jobApplicationsCollection.DeleteMany(ctx, bson.M{"jobID": oid})
+    if err != nil {
+        return err
+    }
+
+    return nil
+}
+
+func SearchJob(jobName string, salary float64, location string, tags string) ([]model.Job, error) {
+    client, err := db.GetMongoClient()
+    if err != nil {
+        return nil, err
+    }
+
+    coll := client.Collection("jobs")
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+
+    filter := bson.M{}
+    if jobName != "" {
+        filter["title"] = bson.M{"$regex": jobName, "$options": "i"}
+    }
+    if salary != 0 {
+        filter["salary"] = bson.M{"$gte": salary}
+    }
+    if location != "" {
+        filter["location"] = bson.M{"$regex": location, "$options": "i"}
+    }
+    if tags != "" {
+        filter["tags"] = bson.M{"$regex": tags, "$options": "i"}
+    }
+    options := options.Find()
+    options.SetLimit(10)
+    options.SetSort(bson.M{"createdAt": -1})
+    options.SetProjection(bson.M{"_id": 1, "title": 1, "location": 1, "salary": 1, "tags": 1})
+    options.SetSkip(0)
+
+
+    cursor, err := coll.Find(ctx, filter)
+    if err != nil {
+        return nil, err
+    }
+    defer cursor.Close(ctx)
 
     var jobs []model.Job
     if err := cursor.All(ctx, &jobs); err != nil {

@@ -50,6 +50,17 @@ func LoginUser(req model.LoginRequest) (*model.User, error) {
     return userVerified, nil
 }
 
+func GetUserByID(id string) (*model.UserWithApplicationsAndJobs, error) {
+    user, err := repository.GetUserByID(id)
+    if err != nil {
+        return nil, err
+    }
+    if user == nil {
+        return nil, fmt.Errorf("user not found")
+    }
+    return user, nil
+}
+
 
 
 var ErrEmailAlreadyInUse = fmt.Errorf("email already registered")

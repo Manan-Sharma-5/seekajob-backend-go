@@ -63,3 +63,19 @@ func Login(c *gin.Context) {
         },
 })
 }
+
+func GetUser(c *gin.Context) {
+    userID, err := c.Cookie("user_id")
+    if err != nil {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+        return
+    }
+
+    user, err := service.GetUserByID(userID)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user"})
+        return
+    }
+
+    c.JSON(http.StatusOK, user)
+}
