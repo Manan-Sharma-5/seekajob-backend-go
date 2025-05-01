@@ -1,69 +1,67 @@
 package repository
 
-// import (
-// 	"log"
-// 	"time"
+import (
+	"context"
+	"fmt"
+	"os"
+	"time"
 
-// 	"github.com/aws/aws-sdk-go/aws"
-// 	"github.com/aws/aws-sdk-go/aws/session"
-// 	"github.com/aws/aws-sdk-go/service/s3"
-// 	"github.com/gin-gonic/gin"
-// )
+	db "github.com/manan-sharma-5/seekajob-backend/internal/dbconfig"
+	"github.com/manan-sharma-5/seekajob-backend/internal/model"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+)
 
-// func PreviousYearUpload(c *gin.Context) {
-//     region := "eu-north-1"
-//     bucket := "software-engineering-project-s3"
+func UploadResume(resumeFile []byte, userID string) (string, error) {
+	client, err := db.GetMongoClient()
+	if err != nil {
+		return "", err
+	}
+	coll := client.Collection("users")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-//     // Retrieve query parameters for file path and name
-//     filename := c.Query("filename")
-//     if filename == "" {
-//         c.JSON(400, gin.H{"error": "Filename is required"})
-//         return
-//     }
+	userPrimitive, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		return "", fmt.Errorf("invalid user ID format")
+	}
 
-//     // Get the user ID from the cookie (or however it is stored in your application)
-//     userID, err := c.Cookie("user_id")
-//     if err != nil {
-//         c.JSON(401, gin.H{"error": "User not authenticated"})
-//         return
-//     }
+	user := coll.FindOne(ctx, bson.M{"_id": userPrimitive})
+	if user.Err() == mongo.ErrNoDocuments {
+		return "", fmt.Errorf("user not found")
+	}
+	if user.Err() != nil {
+		return "", user.Err()
+	}
 
-//     // Create an AWS session
-//     sess, err := session.NewSession(&aws.Config{
-//         Region: aws.String(region),
-//     })
-//     if err != nil {
-//         log.Println("Failed to create AWS session:", err)
-//         c.JSON(500, gin.H{"error": "Failed to create AWS session"})
-//         return
-//     }
+	userDetails := model.User{}
+	err = user.Decode(&userDetails)
+	if err != nil {
+		fmt.Println("Error decoding user:", err)
+	}
 
-//     // Create an S3 service client
-//     svc := s3.New(sess)
+	if !userDetails.IsCandidate {
+		return "", fmt.Errorf("user is not a candidate")
+	}
 
-//     // Generate a pre-signed PUT URL for the client to upload the file
-//     key := "previous-year-question-paper/" + year + "/" + subjectCode + "/" + filename
-//     putReq, _ := svc.PutObjectRequest(&s3.PutObjectInput{
-//         Bucket: aws.String(bucket),
-//         Key:    aws.String(key),
-//     })
-//     putURL, err := putReq.Presign(15 * time.Minute)
-//     if err != nil {
-//         log.Println("Failed to sign PUT request:", err)
-//         c.JSON(500, gin.H{"error": "Failed to sign PUT request"})
-//         return
-//     }
+	resumePath := fmt.Sprintf("./resumes/%s_resume.pdf", userID)
 
-//     // Generate a pre-signed GET URL for accessing the uploaded file
-//     getReq, _ := svc.GetObjectRequest(&s3.GetObjectInput{
-//         Bucket: aws.String(bucket),
-//         Key:    aws.String(key),
-//     })
-// 		getURL, err := getReq.Presign(7 * 24 * time.Hour)
-//     if err != nil {
-//         log.Println("Failed to sign GET request:", err)
-//         c.JSON(500, gin.H{"error": "Failed to sign GET request"})
-//         return
-//     }
+	err = os.WriteFile(resumePath, resumeFile, 0644)
+	if err != nil {
+		return "", fmt.Errorf("failed to save resume: %v", err)
+	}
 
-// }
+	// Update the user's resume path in the database
+	_, err = coll.UpdateOne(ctx, bson.M{"_id": userPrimitive}, bson.M{
+		"$set": bson.M{
+			"resume": resumePath,
+			"updatedAt":  time.Now(),
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to update resume path in database: %v", err)
+	}
+
+	return resumePath, nil
+}

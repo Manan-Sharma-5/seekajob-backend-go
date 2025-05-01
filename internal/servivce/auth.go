@@ -24,7 +24,7 @@ func SignupUser(req model.SignupRequest) (*model.User, error) {
         Name:     req.Name,
         Email:    req.Email,
         Password: req.Password,
-        IsCandidate: req.IsCandidate,
+        IsCandidate: *req.IsCandidate,
     }
 
     userCreated, err := repository.CreateUser(user)
@@ -40,7 +40,7 @@ func SignupUser(req model.SignupRequest) (*model.User, error) {
 }
 
 func LoginUser(req model.LoginRequest) (*model.User, error) {
-    userVerified, err := repository.VerifyUser(req.Email, req.Password, req.IsCandidate)
+    userVerified, err := repository.VerifyUser(req.Email, req.Password, *req.IsCandidate)
     if err != nil {
         return nil, err
     }

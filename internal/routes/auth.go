@@ -11,6 +11,8 @@ func RegisterAuthRoutes(rg *gin.RouterGroup) {
     {
         auth.POST("/signup", handler.Signup)
         auth.POST("/login", handler.Login)
+        auth.POST("/logout", middleware.AuthMiddleware(), handler.Logout)
         auth.GET("/user", middleware.AuthMiddleware(), handler.GetUser)
+        auth.POST("/upload-resume", middleware.AuthMiddleware(), handler.UploadResume)
     }
 }

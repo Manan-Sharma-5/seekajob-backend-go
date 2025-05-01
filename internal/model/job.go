@@ -73,6 +73,7 @@ type UserWithApplicationsAndJobs struct {
     ID             string          `bson:"_id,omitempty" json:"id"`
     Name           string          `bson:"name" json:"name"`
     Email          string          `bson:"email" json:"email"`
+    Resume        string          `bson:"resume" json:"resume"`
     IsCandidate    bool            `bson:"isCandidate" json:"isCandidate"`
     CreatedAt      time.Time       `bson:"createdAt" json:"createdAt"`
     UpdatedAt      time.Time       `bson:"updatedAt" json:"updatedAt"`

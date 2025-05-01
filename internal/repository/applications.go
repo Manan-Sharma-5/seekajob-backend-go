@@ -38,8 +38,8 @@ func ApplyJob(jobID string, userID string) error {
 	}
 
 	existingApplication := coll.FindOne(context.Background(), bson.M{
-		"job_id": jobPrimitive,
-		"user_id": userPrimitive,
+		"jobID": jobPrimitive,
+		"userID": userPrimitive,
 	})
 	if existingApplication.Err() == nil {
 		return fmt.Errorf("user has already applied for this job")

@@ -113,10 +113,8 @@ func GetJobApplicantWithRelations(applicantID string) (*model.JobApplicant, erro
     defer cancel()
 
     pipeline := mongo.Pipeline{
-        // Match the job applicant
         {{Key: "$match", Value: bson.D{{Key: "_id", Value: applicantIDObj}}}},
         
-        // Lookup the Job
         {
             {Key: "$lookup", Value: bson.D{
                 {Key: "from", Value: "jobs"},
@@ -125,10 +123,8 @@ func GetJobApplicantWithRelations(applicantID string) (*model.JobApplicant, erro
                 {Key: "as", Value: "job"},
             }},
         },
-        // Unwind the job array
         {{Key: "$unwind", Value: bson.D{{Key: "path", Value: "$job"}, {Key: "preserveNullAndEmptyArrays", Value: true}}}},
 
-        // Lookup the Candidate (user)
         {
             {Key: "$lookup", Value: bson.D{
                 {Key: "from", Value: "users"},
@@ -137,7 +133,6 @@ func GetJobApplicantWithRelations(applicantID string) (*model.JobApplicant, erro
                 {Key: "as", Value: "user"},
             }},
         },
-        // Unwind the user array
         {{Key: "$unwind", Value: bson.D{{Key: "path", Value: "$user"}, {Key: "preserveNullAndEmptyArrays", Value: true}}}},
     }
 

@@ -140,6 +140,7 @@ func GetUserByID(id string) (*model.UserWithApplicationsAndJobs, error) {
 			primitive.E{Key: "$group", Value: bson.D{
 				{Key: "_id", Value: "$_id"},
 				{Key: "name", Value: bson.D{{Key: "$first", Value: "$name"}}},
+				{Key: "resume", Value: bson.D{{Key: "$first", Value: "$resume"}}},
 				{Key: "email", Value: bson.D{{Key: "$first", Value: "$email"}}},
 				{Key: "isCandidate", Value: bson.D{{Key: "$first", Value: "$isCandidate"}}},
 				{Key: "createdAt", Value: bson.D{{Key: "$first", Value: "$createdAt"}}},
